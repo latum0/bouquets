@@ -6,3 +6,11 @@ export class BouquetT {
     image!: string;
     liked!: boolean;
 }
+
+
+export type Bouquet = {
+  id: number;
+  nom: string;
+  prix: number;
+  image: string;
+};
