@@ -20,6 +20,7 @@ let mesBouquets = [
     image: "/bouquetTunis.jpg",
     prix: 1500.0,
     liked: false,
+    likes:0,
   },
   {
     id: 2,
@@ -29,6 +30,7 @@ let mesBouquets = [
     image: "/bouquetAlger.webp",
     prix: 2000.0,
     liked: false,
+    likes:0
   },
   {
     id: 3,
@@ -38,6 +40,7 @@ let mesBouquets = [
     image: "/bouquetOran.jpg",
     prix: 2000.0,
     liked: false,
+    likes:0
   },
 ];
 

@@ -4,7 +4,6 @@ import { fetchBouquets } from '../store/bouquetsSlice';
 
 const BackendSync: React.FC = () => {
   const dispatch = useDispatch();
-
   useEffect(() => {
     dispatch(fetchBouquets() as any);
   }, [dispatch]);

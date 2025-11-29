@@ -1,19 +1,14 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
-import type { Bouquet } from '../types/bouquet.dto';
+import type {  BouquetT } from '../types/bouquet.dto';
+import { myFetch } from '../comm/fetchOrAxios';
 
 export const fetchBouquets = createAsyncThunk('bouquets/fetch', async () => {
-  const res = await fetch('http://localhost:5000/api/bouquets');
-  if (!res.ok) throw new Error('Failed to fetch bouquets');
-  const data = (await res.json()) as Bouquet[];
-  try {
-    localStorage.setItem('mesBouquets', JSON.stringify(data));
-  } catch (e) {
-  }
+  const data = await myFetch("http://localhost:5000/api/bouquets",{})
   return data;
 });
 
 interface BouquetsState {
-  items: Bouquet[];
+  items: BouquetT[];
   loading: boolean;
   error?: string;
 }
@@ -27,7 +22,7 @@ const bouquetsSlice = createSlice({
   name: 'bouquets',
   initialState,
   reducers: {
-    setBouquets(state, action: PayloadAction<Bouquet[]>) {
+    setBouquets(state, action: PayloadAction<BouquetT[]>) {
       state.items = action.payload;
     },
   },
