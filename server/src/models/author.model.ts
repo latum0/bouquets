@@ -1,26 +1,20 @@
-// models/author.model.ts
-import { DataTypes, Model, Optional, Sequelize } from "sequelize";
+import { DataTypes, Model, Sequelize } from 'sequelize';
 
 interface AuthorAttributes {
   id: number;
   name?: string | null;
   lastName?: string | null;
   birthDate?: Date | null;
-  // add other fields here...
 }
 
-type AuthorCreationAttributes = Optional<AuthorAttributes, "id">;
-
 export class Author
-  extends Model<AuthorAttributes, AuthorCreationAttributes>
+  extends Model<AuthorAttributes>
   implements AuthorAttributes
 {
   public id!: number;
   public name!: string | null;
   public lastName!: string | null;
-  public birthDate!: Date | null;
 
-  // timestamps
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -41,16 +35,12 @@ export default (sequelize: Sequelize) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
-      birthDate: {
-        type: DataTypes.DATE,
-        allowNull: true,
-      },
     },
     {
       sequelize,
-      tableName: "authors",
+      tableName: 'authors',
       timestamps: true,
-    }
+    },
   );
 
   return Author;

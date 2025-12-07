@@ -1,34 +1,38 @@
-import { Sequelize, Op } from "sequelize";
-import { dbConfig } from "../config/db.config";
-import AuthorModel from "../models/author.model.js";
+import { Bouquet } from '../models/bouquet.model';
+import { Fleur } from '../models/fleur.model';
+import { Achat, BouquetFleur, Like } from '../models/assoc.model';
+import { User } from '../models/user.model';
+import { seedDatabase } from './seed';
+import { sequelize } from '../config/db.config';
 
+Bouquet.belongsToMany(Fleur, { through: BouquetFleur });
+Fleur.belongsToMany(Bouquet, { through: BouquetFleur });
 
-export const sequelize = new Sequelize(
-  dbConfig.DB,
-  dbConfig.USER,
-  dbConfig.PASSWORD,
-  {
-    host: dbConfig.HOST,
-    dialect: dbConfig.dialect as any,
-    pool: dbConfig.pool,
-    logging: false,
-  }
-);
+User.belongsToMany(Bouquet, {
+  through: Like,
+  as: 'LikedBouquets',
+});
+Bouquet.belongsToMany(User, {
+  through: Like,
+  as: 'Likers',
+});
 
-(async () => {
+User.belongsToMany(Bouquet, {
+  through: Achat,
+  as: 'PurchasedBouquets',
+});
+Bouquet.belongsToMany(User, {
+  through: Achat,
+  as: 'Buyers',
+});
+
+export const seqRun = async () => {
   try {
     await sequelize.authenticate();
-    console.log("✅ Database connected.");
+    console.log('database connected.');
+    await sequelize.sync({ alter: true });
+    await seedDatabase();
   } catch (err) {
-    console.error("❌ DB connection error:", err);
+    console.error('db connection error:', err);
   }
-})();
-
-export const Author = AuthorModel(sequelize);
-
-export const db = {
-  sequelize,
-  Author,
-  Op,
 };
-export default db;

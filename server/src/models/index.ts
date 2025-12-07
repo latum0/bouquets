@@ -1,6 +1,5 @@
-
-import AuthorModel from "./author.model.js";
-import { sequelize } from "../db/db.index";
+import { sequelize } from '../config/db.config.js';
+import AuthorModel from './author.model.js';
 
 const Author = AuthorModel(sequelize);
 

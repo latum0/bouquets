@@ -1,13 +1,20 @@
-export const dbConfig = {
-  DB: "your_db_name",
-  USER: "your_db_user",
-  PASSWORD: "your_db_password",
-  HOST: "localhost",
-  dialect: "mysql" as "mysql" | "postgres" | "sqlite" | "mariadb",
-  pool: {
-    max: 5,
-    min: 0,
-    acquire: 30000,
-    idle: 10000,
-  },
+import { Sequelize } from 'sequelize';
+const dbConfig = {
+  DB: 'bouquet',
+  USER: 'user',
+  PASSWORD: 'password',
+  HOST: './dev.sqlite',
+  dialect: 'sqlite',
 };
+
+export const sequelize = new Sequelize(
+  dbConfig.DB,
+  dbConfig.USER,
+  dbConfig.PASSWORD,
+  {
+    dialect: 'sqlite',
+    storage: './database.sqlite',
+    logging: false,
+    host: dbConfig.HOST,
+  },
+);
