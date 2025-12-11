@@ -5,6 +5,7 @@ export class BouquetT {
   prix!: number;
   image!: string;
   liked!: boolean;
+  likes!: number;
 }
 
 export type Bouquet = {

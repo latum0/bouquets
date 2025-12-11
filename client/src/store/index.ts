@@ -1,9 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
 import bouquetsReducer from './bouquetsSlice';
+import authReducer from './authSlice';
 
 export const store = configureStore({
   reducer: {
     bouquets: bouquetsReducer,
+    auth: authReducer,
   },
 });
 

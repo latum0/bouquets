@@ -1,7 +1,5 @@
-import createAuthorModel from '../models/author.model'; // default factory you showed
-import { sequelize } from '../db/db.index';
-
-const Author = createAuthorModel(sequelize); // init model with your sequelize instance
+import { sequelize } from '../config/db.config';
+import { Author } from '../models/author.model';
 
 (async () => {
   try {
@@ -25,13 +23,11 @@ const Author = createAuthorModel(sequelize); // init model with your sequelize i
       console.log('authors table does not exist yet (describeTable failed).');
     }
 
-    // 4) seed data (will run validations on model if any)
     const seed = [
       { name: 'Victor', lastName: 'Hugo' },
       { name: 'Alice', lastName: 'Walker' },
     ];
 
-    // Use bulkCreate to insert multiple quickly; validate:true enforces model validations
     const created = await (Author as any).bulkCreate(seed, { validate: true });
     console.log(
       '✅ Seeded rows:',

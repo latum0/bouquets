@@ -2,15 +2,14 @@ import { BouquetFleur, Like } from '../models/assoc.model';
 import { Bouquet } from '../models/bouquet.model';
 import { Fleur } from '../models/fleur.model';
 import { User } from '../models/user.model';
+import bcrypt from 'bcryptjs';
+
+const USER_LOGIN = 'admin';
+const USER_PASSWORD = 'pass123';
+const USER_NOM_COMPLET = 'Admin test';
 
 export const seedDatabase = async () => {
   try {
-    const count = await Bouquet.count();
-    if (count > 0) {
-      console.log('database already has data, deeding skipped');
-      return;
-    }
-
     console.log(' starting database seeding...');
 
     const jasmine = await Fleur.create({
@@ -27,7 +26,7 @@ export const seedDatabase = async () => {
     const bqtTunis = await Bouquet.create({
       nom: 'Bouquet de Tunis',
       description: 'Mélange de jasmins',
-      image: 'bouquetTunis.jpg',
+      image: '/images/bouquetTunis.jpg',
       prix: 50.0,
       likes: 0,
     });
@@ -35,7 +34,7 @@ export const seedDatabase = async () => {
     const bqtAlger = await Bouquet.create({
       nom: "Bouquet d'Alger",
       description: 'Senteurs méditerranéennes',
-      image: 'bouquetAlger.webp',
+      image: '/images/bouquetAlger.webp',
       prix: 75.0,
       likes: 0,
     });
@@ -51,16 +50,23 @@ export const seedDatabase = async () => {
       quantite: 5,
     });
 
+    const salt = await bcrypt.genSalt(10);
+
+    const hashedPassword = await bcrypt.hash(USER_PASSWORD, salt);
+
     const user1 = await User.create({
-      login: 'user1',
-      password: 'password',
-      nomComplet: 'user name',
+      login: USER_LOGIN,
+      password: hashedPassword,
+      nomComplet: USER_NOM_COMPLET,
     });
 
     await Like.create({ UserId: user1.id, BouquetId: bqtTunis.id });
 
     await bqtTunis.increment('likes');
 
+    console.log(
+      `✅ Utilisateur de test créé: ${USER_LOGIN} / ${USER_PASSWORD}`,
+    );
     console.log('database seeded successfully!');
   } catch (error) {
     console.error('seeding failed:', error);

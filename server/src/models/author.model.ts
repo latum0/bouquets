@@ -4,7 +4,6 @@ interface AuthorAttributes {
   id: number;
   name?: string | null;
   lastName?: string | null;
-  birthDate?: Date | null;
 }
 
 export class Author
