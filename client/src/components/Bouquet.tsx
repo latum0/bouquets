@@ -1,108 +1,83 @@
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import type { BouquetT } from '../types/bouquet.dto';
-
-// Assurez-vous d'importer RootState pour le typage si nécessaire
 import { type RootState } from '../store';
-// Importez le sélecteur d'authentification.
 import { isAuthentificated } from '../services/auth';
-
-// Importez le composant Modale créé précédemment
-import AddBouquetModal from './AddBouquetModal';
-// NOTE: Ajustez le chemin d'importation de AddBouquetModal si nécessaire
 
 function Bouquet({ bouquet }: { bouquet: BouquetT }) {
   const [liked, setLiked] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Utilisation de useSelector pour l'authentification
-  const isAuth = useSelector(
-    isAuthentificated as (state: RootState) => boolean,
-  );
-
-  // Fonction appelée après l'ajout réussi du bouquet
-  const handleBouquetAdded = () => {
-    console.log(
-      'Nouveau bouquet créé. Vous devriez rafraîchir la liste principale ici.',
-    );
-  };
+  const isAuth = useSelector((state: RootState) => isAuthentificated(state));
 
   return (
-    // Conteneur enveloppant la carte et le bouton pour l'alignement
-    <div className="flex flex-col w-72 max-w-sm h-full mx-auto">
-      <div // La carte principale, avec flex-grow pour l'étirer
-        className="bg-white rounded-lg shadow-xl hover:shadow-2xl transition-shadow duration-300 overflow-hidden p-4 space-y-3 flex-grow"
-        // Le style fixe 'width: 18rem' a été retiré.
-        key={bouquet.id}
-      >
+    /* h-full ensures the card fills the grid cell height; flex-col allows internal distribution */
+    <div className="group bg-white rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:shadow-blue-100 transition-all duration-500 overflow-hidden flex flex-col h-full w-full">
+      {/* 1. Fixed Image Container (Ensures uniform top half) */}
+      <div className="relative h-64 w-full overflow-hidden flex-shrink-0">
         <img
           src={`http://localhost:5000/public${bouquet.image}`}
-          className="w-full h-48 object-cover rounded-md"
-          alt={`Image du bouquet ${bouquet.nom}`}
+          className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
+          alt={bouquet.nom}
         />
-
-        <div className="space-y-1">
-          <h5 className="text-xl font-bold text-gray-900">{bouquet.nom}</h5>
-          <p className="text-gray-600 text-sm line-clamp-2">
-            {bouquet.description}.
-          </p>
-          <p className="text-2xl font-extrabold text-pink-700">
-            {bouquet.prix} DA.
-          </p>
-        </div>
-
-        <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-          {/* Bouton Like/Unlike */}
-          <button
-            className={`
-              px-4 py-2 text-sm font-semibold rounded-full shadow-md transition duration-150 ease-in-out
-              ${
-                isAuth
-                  ? 'bg-pink-600 text-white hover:bg-pink-700 transform hover:scale-105'
-                  : 'bg-gray-300 text-gray-700 cursor-not-allowed'
-              }
-            `}
-            disabled={!isAuth}
-            onClick={() => {
-              if (isAuth) {
-                setLiked(!liked);
-                console.log(
-                  `User ${liked ? 'unliked' : 'liked'} bouquet ${bouquet.id}`,
-                );
-              }
-            }}
-          >
-            {liked ? ' Unlike' : ' Like'}
-          </button>
-
-          {/* Affichage des Likes (Bouton Statut) */}
-          <span
-            className="px-3 py-1 text-sm font-medium rounded-full bg-green-500 text-white shadow-sm"
-            role="status"
-          >
-            {bouquet.likes} Likes
+        <div className="absolute top-4 right-4">
+          <span className="bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-gray-700 shadow-sm">
+            {bouquet.likes + (liked ? 1 : 0)} Likes
           </span>
         </div>
       </div>
 
-      {/* Bouton d'ajout de Bouquet (extérieur à la carte principale) */}
-      {isAuth && (
-        <div className="pt-3 text-center">
+      {/* 2. Content Area (flex-grow fills the remaining space) */}
+      <div className="p-6 flex flex-col flex-grow">
+        {/* Title and Price */}
+        <div className="flex justify-between items-start mb-3">
+          <h3 className="text-xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors line-clamp-1">
+            {bouquet.nom}
+          </h3>
+          <p className="text-lg font-black text-pink-600 whitespace-nowrap ml-2">
+            {bouquet.prix} <span className="text-xs font-bold">DA</span>
+          </p>
+        </div>
+
+        {/* Description (flex-grow pushes the button to the bottom) */}
+        <p className="text-gray-500 text-sm line-clamp-3 mb-6 flex-grow">
+          {bouquet.description ||
+            'Aucune description disponible pour ce magnifique bouquet.'}
+        </p>
+
+        {/* 3. Action Button (Always stays at the bottom) */}
+        <div className="mt-auto">
           <button
-            onClick={() => setIsModalOpen(true)}
-            className="w-full px-4 py-3 text-md font-bold text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 transition duration-200 ease-in-out transform hover:scale-[1.01]"
+            disabled={!isAuth}
+            onClick={() => setLiked(!liked)}
+            className={`w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-bold transition-all duration-300 shadow-md
+              ${
+                isAuth
+                  ? liked
+                    ? 'bg-blue-600 text-white shadow-blue-200' // Blue when liked
+                    : 'bg-gray-900 text-white hover:bg-gray-800 shadow-gray-200'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
+              }
+            `}
           >
-            + Ajouter un Nouveau Bouquet
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={`h-5 w-5 transition-transform ${
+                liked ? 'fill-current scale-110' : 'none'
+              }`}
+              fill={liked ? 'currentColor' : 'none'}
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+              />
+            </svg>
+            {liked ? 'Aimé' : "J'aime"}
           </button>
         </div>
-      )}
-
-      {/* Inclusion de la Modale */}
-      <AddBouquetModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onBouquetAdded={handleBouquetAdded}
-      />
+      </div>
     </div>
   );
 }

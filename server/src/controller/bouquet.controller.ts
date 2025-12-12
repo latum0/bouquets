@@ -8,9 +8,9 @@ import { BouquetFleur } from '../models/assoc.model';
 
 const DRAFT_COOKIE_NAME = 'bouquet_draft';
 const COOKIE_OPTIONS = {
-  maxAge: 1000 * 60 * 60 * 24,
+  maxAge: 1000 * 60 * 60 * 24, // 1 Day
   httpOnly: true,
-  secure: false,
+  secure: process.env.NODE_ENV === 'production', // Secure in prod only
   sameSite: 'lax' as const,
 };
 
@@ -19,106 +19,129 @@ interface FlowerData {
   quantite: number;
 }
 
-interface BouquetDraftPayload {
-  nom: string;
-  description: string;
-  image: string;
-  prix: number;
-  flowers: FlowerData[];
+interface BouquetPayload {
+  nom?: string;
+  description?: string;
+  image?: string;
+  prix?: number;
+  flowers?: FlowerData[];
 }
 
+/**
+ * BUTTON 1: SAVE DRAFT
+ * Stores data in a cookie. Allows partial data (no strict validation).
+ */
 export const bouquetDraft = async (req: Request, res: Response) => {
-  if (!req.file) {
-    return res.status(400).json({ message: 'Image file is required.' });
-  }
-
-  const { nom, description, prix, flowers } = req.body;
-
-  let parsedFlowers: FlowerData[] = [];
   try {
-    parsedFlowers = typeof flowers === 'string' ? JSON.parse(flowers) : flowers;
-  } catch (err) {
-    return res
-      .status(400)
-      .json({ message: 'Invalid format for flowers data.' });
-  }
+    const { nom, description, prix, flowers, existingImage } = req.body;
 
-  if (!nom || !parsedFlowers || parsedFlowers.length === 0) {
-    return res
-      .status(400)
-      .json({ message: 'Missing bouquet name or flowers.' });
-  }
+    // 1. Handle Image: New upload takes precedence -> otherwise use existing string path -> otherwise null
+    let imagePath = existingImage || null;
+    if (req.file) {
+      imagePath = `/images/${req.file.filename}`;
+    }
 
-  const flowerIds = parsedFlowers.map((f: FlowerData) => f.fleurId);
-  const existingFlowers = await Fleur.findAll({ where: { id: flowerIds } });
+    // 2. Parse Flowers safely (multipart/form-data sends arrays as JSON strings)
+    let parsedFlowers: FlowerData[] = [];
+    if (flowers) {
+      try {
+        parsedFlowers =
+          typeof flowers === 'string' ? JSON.parse(flowers) : flowers;
+      } catch (e) {
+        parsedFlowers = []; // Fail gracefully for draft
+      }
+    }
 
-  if (existingFlowers.length !== flowerIds.length) {
-    return res
-      .status(400)
-      .json({ message: 'At least one flower ID is invalid.' });
-  }
+    // 3. Construct Draft Data (Allowing partial/undefined values)
+    const draftData: BouquetPayload = {
+      nom: nom || '',
+      description: description || '',
+      image: imagePath,
+      prix: prix ? parseFloat(prix) : undefined,
+      flowers: parsedFlowers,
+    };
 
-  const imagePath = `/images/${req.file.filename}`;
+    // 4. Save to Cookie
+    res.cookie(DRAFT_COOKIE_NAME, JSON.stringify(draftData), COOKIE_OPTIONS);
 
-  const draftData: BouquetDraftPayload = {
-    nom,
-    description,
-    image: imagePath,
-    prix: parseFloat(prix) || 0,
-    flowers: parsedFlowers,
-  };
-
-  try {
-    const draftJson = JSON.stringify(draftData);
-    res.cookie(DRAFT_COOKIE_NAME, draftJson, COOKIE_OPTIONS);
-
-    return res.status(202).json({
-      message: 'Bouquet draft saved to session with image.',
-      data: draftData,
+    return res.status(200).json({
+      message: 'Draft saved successfully.',
+      data: draftData, // Return data so frontend can update state (especially the new image path)
     });
   } catch (error) {
-    console.error('Error saving bouquet draft:', error);
-    return res.status(500).json({ message: 'Could not process draft.' });
+    console.error('Error saving draft:', error);
+    return res.status(500).json({ message: 'Could not save draft.' });
   }
 };
+
+/**
+ * BUTTON 2: FINALIZE BOUQUET
+ * Stores data in DB. Ignores cookies. Requires strict validation.
+ */
 export const finalizeBouquet = async (req: Request, res: Response) => {
-  // 1. Récupération des données du CORPS
-  const draftData: any = req.body;
-
-  // 2. Validation des données minimales
-  if (
-    !draftData.nom ||
-    !draftData.prix ||
-    !draftData.image ||
-    !draftData.flowers ||
-    draftData.flowers.length === 0
-  ) {
-    return res.status(400).json({
-      message:
-        "Données de bouquet complètes manquantes dans le corps de la requête. Le nom, le prix, l'image et au moins une fleur sont requis.",
-    });
-  }
-
   let transaction: Transaction | undefined;
 
   try {
-    // --- 3. Début de la transaction ---
+    const { nom, description, prix, flowers, image } = req.body;
+
+    // 1. Handle Image Logic for Finalization
+    // User might upload a NEW file now, or send the string path from the previous draft save
+    let finalImagePath = image;
+    if (req.file) {
+      finalImagePath = `/images/${req.file.filename}`;
+    }
+
+    // 2. Parse Flowers
+    let parsedFlowers: FlowerData[] = [];
+    try {
+      parsedFlowers =
+        typeof flowers === 'string' ? JSON.parse(flowers) : flowers;
+    } catch (err) {
+      return res
+        .status(400)
+        .json({ message: 'Invalid format for flowers data.' });
+    }
+
+    // 3. STRICT Validation (Must be full form)
+    if (
+      !nom ||
+      !finalImagePath ||
+      !prix ||
+      !parsedFlowers ||
+      parsedFlowers.length === 0
+    ) {
+      return res.status(400).json({
+        message:
+          'Validation failed: Name, Price, Image, and at least one Flower are required.',
+      });
+    }
+
+    // 4. Validate Flower IDs exist in DB (Data Integrity)
+    const flowerIds = parsedFlowers.map((f) => f.fleurId);
+    const count = await Fleur.count({ where: { id: flowerIds } });
+    if (count !== flowerIds.length) {
+      return res
+        .status(400)
+        .json({ message: 'One or more flower IDs are invalid.' });
+    }
+
+    // 5. Start DB Transaction
     transaction = await sequelize.transaction();
 
-    // --- 4. Création du Bouquet principal ---
+    // 6. Create Bouquet
     const newBouquet = await Bouquet.create(
       {
-        nom: draftData.nom,
-        description: draftData.description,
-        image: draftData.image,
-        prix: draftData.prix,
+        nom,
+        description,
+        image: finalImagePath,
+        prix: parseFloat(prix),
         likes: 0,
       },
       { transaction },
     );
 
-    // --- 5. Création des associations BouquetFleur ---
-    const associationPromises = draftData.flowers.map((f: any) =>
+    // 7. Create Associations (BouquetFleur)
+    const associationPromises = parsedFlowers.map((f) =>
       BouquetFleur.create(
         {
           BouquetId: newBouquet.id,
@@ -131,28 +154,22 @@ export const finalizeBouquet = async (req: Request, res: Response) => {
 
     await Promise.all(associationPromises);
 
-    // --- 6. Validation et Commit ---
+    // 8. Commit Transaction
     await transaction.commit();
 
-    // --- 7. Nettoyage (Si un cookie de brouillon existait, le supprimer) ---
-    // Le cookie est supprimé quel que soit son contenu, car le bouquet est finalisé.
+    // 9. Clear the Draft Cookie (Cleanup)
     if (req.cookies[DRAFT_COOKIE_NAME]) {
       res.clearCookie(DRAFT_COOKIE_NAME);
     }
 
-    // --- 8. Succès ---
     return res.status(201).json({
-      message: 'Bouquet successfully finalized and saved!',
+      message: 'Bouquet created successfully!',
       bouquet: newBouquet,
     });
   } catch (error) {
-    // --- 9. Gestion des Erreurs et Rollback ---
     if (transaction) await transaction.rollback();
     console.error('Error finalizing bouquet:', error);
-
-    return res
-      .status(500)
-      .json({ message: 'Failed to finalize bouquet due to a database error.' });
+    return res.status(500).json({ message: 'Failed to finalize bouquet.' });
   }
 };
 
@@ -167,7 +184,7 @@ export const getBouquetDraft = async (req: Request, res: Response) => {
   }
 
   try {
-    const draftData = JSON.parse(draftCookie) as BouquetDraftPayload;
+    const draftData = JSON.parse(draftCookie);
 
     // Vous pouvez optionnellement valider ici la fraîcheur du brouillon
 

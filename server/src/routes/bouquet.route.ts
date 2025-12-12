@@ -13,7 +13,7 @@ const route = Router();
 
 route.get('/', getAllBouquets);
 route.post('/draft', upload.single('image'), bouquetDraft);
-route.post('/final', finalizeBouquet);
+route.post('/final', upload.single('image'), finalizeBouquet);
 route.put('/:id', updateBouquet);
 route.delete('/:id', deleteBouquet);
 
