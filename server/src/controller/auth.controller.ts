@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { User } from '../models/user.model';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_dev_key';
+const JWT_SECRET = 'jwtaccesssercret';
 
 export const login = async (req: Request, res: Response) => {
   const { login, password } = req.body;
@@ -56,11 +56,9 @@ export const registerUser = async (req: Request, res: Response) => {
   const { login, password, nomComplet } = req.body;
 
   if (!login || !password || !nomComplet) {
-    return res
-      .status(400)
-      .json({
-        message: 'Tous les champs (login, password, nomComplet) sont requis.',
-      });
+    return res.status(400).json({
+      message: 'Tous les champs (login, password, nomComplet) sont requis.',
+    });
   }
 
   try {

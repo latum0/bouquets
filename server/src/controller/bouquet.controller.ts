@@ -5,6 +5,7 @@ import { Fleur } from '../models/fleur.model';
 import { Transaction } from 'sequelize';
 import { sequelize } from '../config/db.config';
 import { BouquetFleur } from '../models/assoc.model';
+import { User } from '../models/user.model';
 
 const DRAFT_COOKIE_NAME = 'bouquet_draft';
 const COOKIE_OPTIONS = {
@@ -197,7 +198,14 @@ export const getBouquetDraft = async (req: Request, res: Response) => {
 
 export async function getAllBouquets(req: Request, res: Response) {
   try {
+    const attributes = ['id', 'nom', 'description', 'image'];
+
+    if (req.isAuthenticated) {
+      attributes.push('prix', 'likes');
+    }
+
     const bouquets = await Bouquet.findAll({
+      attributes: attributes,
       include: [
         {
           model: Fleur,
@@ -295,15 +303,14 @@ export const getBouquetLikers = async (req: Request, res: Response) => {
       include: [
         {
           model: User,
-          as: 'Likers', // Must match the alias in db.index.ts (Bouquet.belongsToMany(User, { as: 'Likers' ... }))
-          attributes: ['id', 'login', 'nomComplet'], // Don't return passwords!
+          as: 'Likers',
+          attributes: ['id', 'login', 'nomComplet'],
         },
       ],
     });
 
     if (!bouquet) return res.status(404).json({ message: 'Bouquet not found' });
 
-    // The type casting 'as any' might be needed if TS doesn't auto-infer the alias method
     return res.json((bouquet as any).Likers);
   } catch (error) {
     console.error(error);

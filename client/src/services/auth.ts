@@ -1,5 +1,7 @@
 import { useSelector } from 'react-redux';
-import type { RootState } from '../store';
+import { store, type RootState } from '../store';
+import { logoutUser } from '../store/authSlice';
+import { myFetch } from '../comm/fetchOrAxios';
 
 export const isAuthentificated = (state: RootState): boolean => {
   return state.auth.isAuthenticated;
@@ -10,20 +12,20 @@ export const whoIsAuthentificated = (state: RootState): string => {
 };
 
 export const loginApi = async (login: string, password: string) => {
-  const response = await fetch('http://localhost:5000/api/auth/login', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ login, password }),
-  });
+  try {
+    const data = await myFetch('http://localhost:5000/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ login, password }),
+    });
 
-  if (!response.ok) {
-    // Lance une erreur pour être capturée dans le composant
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'Échec de la connexion.');
+    return data;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(error.message || 'Échec de la connexion.');
+    }
+    throw new Error('Échec de la connexion.');
   }
-
-  // Le corps de la réponse contient { token, user }
-  return response.json();
+};
+export const handleLogout = async () => {
+  store.dispatch(logoutUser());
 };

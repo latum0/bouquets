@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { myFetch } from '../comm/fetchOrAxios';
 
 interface Flower {
   id: number;
@@ -31,9 +32,7 @@ const AddBouquetModal: React.FC<ModalProps> = ({
   onClose,
   onBouquetAdded,
 }) => {
-  // --- New State for Dynamic Flowers ---
   const [availableFlowers, setAvailableFlowers] = useState<Flower[]>([]);
-
   const [formData, setFormData] = useState<FormDataState>({
     nom: '',
     description: '',
@@ -46,23 +45,19 @@ const AddBouquetModal: React.FC<ModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showConfirmExit, setShowConfirmExit] = useState(false);
 
-  // 1. Fetch Flowers & Load Draft on Open
   useEffect(() => {
     if (isOpen) {
       const fetchData = async () => {
         setIsLoading(true);
         try {
-          // Fetch Flowers list
-          const fleursRes = await fetch(FLEURS_API_URL);
-          if (fleursRes.ok) {
-            const fleursJson = await fleursRes.json();
+          const fleursJson = await myFetch(FLEURS_API_URL);
+          if (fleursJson) {
             setAvailableFlowers(fleursJson);
           }
 
-          // Fetch Draft from Cookie
-          const draftRes = await fetch(`${API_BASE_URL}/draft`);
-          if (draftRes.ok && draftRes.status !== 204) {
-            const draft = await draftRes.json();
+          const draft = await myFetch(`${API_BASE_URL}/draft`);
+
+          if (draft) {
             setFormData({
               nom: draft.nom || '',
               description: draft.description || '',
@@ -129,10 +124,13 @@ const AddBouquetModal: React.FC<ModalProps> = ({
     setError(null);
     try {
       const payload = preparePayload();
+
       const res = await fetch(`${API_BASE_URL}/draft`, {
         method: 'POST',
+        credentials: 'include',
         body: payload,
       });
+
       const result = await res.json();
       if (!res.ok) throw new Error(result.message || 'Draft failed');
       setServerImagePath(result.data.image);
@@ -164,7 +162,12 @@ const AddBouquetModal: React.FC<ModalProps> = ({
       const res = await fetch(`${API_BASE_URL}/final`, {
         method: 'POST',
         body: payload,
+        credentials: 'include',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
       });
+
       const result = await res.json();
       if (!res.ok) throw new Error(result.message || 'Finalization failed');
       alert('Bouquet added to Database!');
@@ -179,6 +182,7 @@ const AddBouquetModal: React.FC<ModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      {/* Rest of your JSX remains the same */}
       {showConfirmExit && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 z-[60]">
           <div className="bg-white p-6 rounded-lg shadow-2xl max-w-sm text-center">
@@ -276,9 +280,9 @@ const AddBouquetModal: React.FC<ModalProps> = ({
             />
           </div>
 
-          <div className="border rounded-lg p-4 bg-pink-50">
+          <div className="border rounded-lg p-4 bg-blue-50">
             <div className="flex justify-between items-center mb-3">
-              <h4 className="font-bold text-pink-800">Composition</h4>
+              <h4 className="font-bold text-blue-800">Composition</h4>
               <button
                 type="button"
                 onClick={() => {
@@ -288,7 +292,7 @@ const AddBouquetModal: React.FC<ModalProps> = ({
                     { fleurId: firstId, quantite: 1 },
                   ]);
                 }}
-                className="text-xs bg-pink-600 text-white px-2 py-1 rounded"
+                className="text-xs bg-blue-600 text-white px-2 py-1 rounded"
               >
                 + Add Flower
               </button>
@@ -343,12 +347,12 @@ const AddBouquetModal: React.FC<ModalProps> = ({
             disabled={isLoading}
             className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg font-bold hover:bg-indigo-200 transition"
           >
-            {isLoading ? 'Saving...' : 'Save Draft (Cookie)'}
+            {isLoading ? 'Saving...' : 'Save Draft '}
           </button>
           <button
             onClick={handleFinalize}
             disabled={isLoading}
-            className="px-4 py-2 bg-pink-600 text-white rounded-lg font-bold hover:bg-pink-700 shadow-md transition"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-md transition"
           >
             {isLoading ? 'Processing...' : 'Add Bouquet (DB)'}
           </button>

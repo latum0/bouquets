@@ -1,12 +1,22 @@
-import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
-import type {  BouquetT } from '../types/bouquet.dto';
+import {
+  createSlice,
+  createAsyncThunk,
+  type PayloadAction,
+} from '@reduxjs/toolkit';
+import type { BouquetT } from '../types/bouquet.dto';
 import { myFetch } from '../comm/fetchOrAxios';
-
-export const fetchBouquets = createAsyncThunk('bouquets/fetch', async () => {
-  const data = await myFetch("http://localhost:5000/api/bouquets",{})
-  return data;
-});
-
+const API_URL = 'http://localhost:5000/api/bouquets';
+export const fetchBouquets = createAsyncThunk(
+  'bouquets/fetch',
+  async (_, { rejectWithValue }) => {
+    try {
+      const data = await myFetch(API_URL, {});
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to fetch bouquets');
+    }
+  },
+);
 interface BouquetsState {
   items: BouquetT[];
   loading: boolean;

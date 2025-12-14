@@ -1,27 +1,99 @@
 import React, { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useSelector } from 'react-redux'; // <-- NOUVEAU: Importez useSelector
+import { Link, useNavigate } from 'react-router-dom'; // 🌟 NOUVEAU: useNavigate
+import { useSelector, useDispatch } from 'react-redux'; // 🌟 NOUVEAU: useDispatch
 import type { MenuItem } from '../types/navbar.dto';
 
-// Assurez-vous d'importer RootState pour le typage de l'état si vous utilisez TypeScript
-import { type RootState } from '../store'; // <-- Ajustez le chemin vers votre store/index.ts
-
-// Importez les sélecteurs. Le chemin '../services/auth' est utilisé ici,
-// mais ils devraient idéalement être dans un dossier 'store' ou 'selectors'.
-import { isAuthentificated, whoIsAuthentificated } from '../services/auth';
+import { type RootState } from '../store';
+import {
+  isAuthentificated,
+  whoIsAuthentificated,
+  handleLogout,
+} from '../services/auth'; // 🌟 NOUVEAU: Importez handleLogout
+import { logoutUser } from '../store/authSlice'; // 🌟 Importez l'action Redux
 
 interface NavbarProps {
   menu: MenuItem[];
 }
 
+// =========================================================
+// NOUVEAU COMPOSANT : MENU DÉROULANT UTILISATEUR
+// =========================================================
+interface UserMenuProps {
+  userLabel: string;
+}
+
+const UserMenu: React.FC<UserMenuProps> = ({ userLabel }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const doLogout = () => {
+    // 1. Dispatcher l'action Redux
+    dispatch(logoutUser());
+    // 2. Rediriger l'utilisateur (Redirection client après la déconnexion)
+    navigate('/');
+    setIsOpen(false); // Fermer le menu
+  };
+
+  return (
+    <div className="relative">
+      {/* Bouton du nom de l'utilisateur */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-full font-medium transition duration-150 ease-in-out flex items-center"
+      >
+        {userLabel}
+        <svg
+          className={`h-4 w-4 ml-1.5 transform transition-transform duration-200 ${
+            isOpen ? 'rotate-180' : 'rotate-0'
+          }`}
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+        >
+          <path
+            fillRule="evenodd"
+            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </button>
+
+      {/* Menu déroulant */}
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-50 py-1 border border-gray-200">
+          <button
+            onClick={doLogout}
+            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-red-500 hover:text-white flex items-center"
+          >
+            <svg
+              className="h-4 w-4 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              ></path>
+            </svg>
+            Déconnexion
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// =========================================================
+// COMPOSANT PRINCIPAL : NAVBAR
+// =========================================================
 export const Navbar: React.FC<NavbarProps> = ({ menu }) => {
-  // 1. State local pour le menu déroulant
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // 2. Utilisation de l'hook useSelector pour obtenir les valeurs de l'état Redux
-
-  // Appeler les sélecteurs en leur passant l'état global (state)
-  // L'hook useSelector est la SEULE façon d'appeler ces fonctions sélecteurs dans un composant.
   const authenticated = useSelector(
     isAuthentificated as (state: RootState) => boolean,
   );
@@ -33,22 +105,22 @@ export const Navbar: React.FC<NavbarProps> = ({ menu }) => {
     setIsMenuOpen(!isMenuOpen);
   };
 
-  // 3. PROCESS THE MENU using authentication status
   const processedMenu = useMemo(() => {
-    // La logique utilise directement les variables `authenticated` et `userLabel`
-    // obtenues via useSelector, sans appel de fonction.
-    return menu.map((item) => {
-      // Check for the "Mon Compte" link
-      if (item.url === '/moncompte') {
-        // Appliquer le label dynamique si l'utilisateur est connecté.
-        if (authenticated) {
-          // Return the item with the dynamically updated label
-          return { ...item, label: userLabel };
-        }
-      }
-      return item; // Return all other items unchanged
-    });
-  }, [menu, authenticated, userLabel]); // <-- Dépendances mises à jour pour le useMemo
+    // 1. Filtrer ou ajuster le lien de Mon Compte si l'utilisateur est connecté
+    const menuWithoutAccount = menu.filter((item) => item.url !== '/moncompte');
+
+    // 2. Si non authentifié, ajouter le lien 'Mon Compte' (qui redirige vers login)
+    if (!authenticated) {
+      // Supposons que votre menu initial contient le lien de connexion/compte
+      const monCompteItem = menu.find((item) => item.url === '/moncompte');
+      return monCompteItem
+        ? [...menuWithoutAccount, monCompteItem]
+        : menuWithoutAccount;
+    }
+
+    // Si authentifié, le lien est remplacé par le composant UserMenu (géré plus tard)
+    return menuWithoutAccount;
+  }, [menu, authenticated]);
 
   return (
     <nav className="bg-white shadow-md border-b border-gray-200">
@@ -64,12 +136,10 @@ export const Navbar: React.FC<NavbarProps> = ({ menu }) => {
             </Link>
           </div>
 
-          {/* Desktop Menu & Search */}
+          {/* Desktop Menu & User/Login */}
           <div className="hidden lg:flex lg:items-center lg:space-x-8">
             <ul className="flex space-x-4">
-              {/* Map over the processed menu */}
               {processedMenu.map((e) => (
-                // Utiliser une clé stable (comme l'url) est mieux si le label change
                 <li key={e.url || e.label}>
                   <Link
                     to={e.url}
@@ -80,6 +150,21 @@ export const Navbar: React.FC<NavbarProps> = ({ menu }) => {
                 </li>
               ))}
             </ul>
+
+            {/* 🌟 NOUVEAU: Affichage du UserMenu ou du bouton de connexion */}
+            <div className="pl-4">
+              {authenticated ? (
+                <UserMenu userLabel={userLabel} />
+              ) : (
+                // Assurez-vous d'avoir un lien de connexion si 'Mon Compte' a été filtré
+                <Link
+                  to="/moncompte" // Assurez-vous que c'est la route vers la connexion
+                  className="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 transition duration-150 ease-in-out font-bold"
+                >
+                  Se connecter
+                </Link>
+              )}
+            </div>
 
             {/* ... Search Form ... */}
             <form className="flex space-x-2">

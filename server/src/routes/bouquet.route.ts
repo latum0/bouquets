@@ -4,18 +4,22 @@ import {
   deleteBouquet,
   finalizeBouquet,
   getAllBouquets,
+  getBouquetDraft,
   getBouquetLikes,
   updateBouquet,
 } from '../controller/bouquet.controller';
-import { upload } from '../utils/multer';
+import { upload } from '../middlewares/multer';
+import { authMiddleware } from '../middlewares/auth.middleware';
 
 const route = Router();
 
-route.get('/', getAllBouquets);
-route.post('/draft', upload.single('image'), bouquetDraft);
-route.post('/final', upload.single('image'), finalizeBouquet);
-route.put('/:id', updateBouquet);
-route.delete('/:id', deleteBouquet);
+route.get('/', authMiddleware, getAllBouquets);
+route.post('/draft', authMiddleware, upload.single('image'), bouquetDraft);
+route.get('/draft', authMiddleware, getBouquetDraft);
+
+route.post('/final', authMiddleware, upload.single('image'), finalizeBouquet);
+route.put('/:id', authMiddleware, updateBouquet);
+route.delete('/:id', authMiddleware, deleteBouquet);
 
 route.get('/:id/likes', getBouquetLikes);
 
